@@ -64,9 +64,13 @@ export class WelcomePage extends Component {
   }
 
   render() {
-    const { t, data, loading, locale } = this.props;
+    const { t, data, prefetch, loading, locale } = this.props;
     if (loading) {
       return null;
+    }
+
+    if (process.env.BUILD_TARGET === 'client') {
+      prefetch('/subjects/subject:14');
     }
 
     if (!data) {
@@ -147,6 +151,7 @@ WelcomePage.propTypes = {
   }).isRequired,
   locale: PropTypes.string.isRequired,
   loading: PropTypes.bool.isRequired,
+  prefetch: PropTypes.func.isRequired,
   data: PropTypes.shape({
     frontpage: GraphQLFrontpageShape,
   }),

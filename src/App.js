@@ -25,6 +25,7 @@ const Route = ({
   initialProps,
   locale,
   background,
+  prefetch,
   hideMasthead,
   ...rest
 }) => (
@@ -34,7 +35,12 @@ const Route = ({
       <Page background={background} locale={locale}>
         <Content>
           {!hideMasthead && <Masthead locale={locale} {...props} />}
-          <Component {...props} locale={locale} {...initialProps} />
+          <Component
+            {...props}
+            locale={locale}
+            prefetch={prefetch}
+            {...initialProps}
+          />
         </Content>
       </Page>
     )}
@@ -45,11 +51,18 @@ Route.propTypes = {
   component: PropTypes.func.isRequired,
   background: PropTypes.bool.isRequired,
   locale: PropTypes.string.isRequired,
+  prefetch: PropTypes.func.isRequired,
   initialProps: PropTypes.object, // eslint-disable-line react/forbid-prop-types
   hideMasthead: PropTypes.bool,
 };
 
-async function loadInitialProps(pathname, ctx) {
+const loadingPaths = [];
+export async function loadInitialProps(pathname, ctx) {
+  if (loadingPaths.indexOf(pathname) > -1) {
+    console.log('already loading');
+    // return promises
+  }
+
   const promises = [];
   routes.some(route => {
     const match = matchPath(pathname, route);
@@ -58,6 +71,10 @@ async function loadInitialProps(pathname, ctx) {
     }
     return !!match;
   });
+  loadingPaths.push(pathname);
+
+  const index = loadingPaths.indexOf(pathname);
+  loadingPaths.splice(index, 1);
   return Promise.all(promises);
 }
 
@@ -145,6 +162,15 @@ class App extends React.Component {
     }
   }
 
+  prefetch = pathname => {
+    console.log('called' + pathname);
+    loadInitialProps(pathname, {
+      locale: this.props.locale,
+      location: { search: '' },
+      client: this.props.client,
+    });
+  };
+
   render() {
     if (this.state.hasError) {
       return <ErrorPage locale={this.props.locale} />;
@@ -161,6 +187,7 @@ class App extends React.Component {
               hideMasthead={route.hideMasthead}
               initialProps={this.state.data}
               locale={this.props.locale}
+              prefetch={this.prefetch}
               component={route.component}
               background={route.background}
               path={route.path}
@@ -172,6 +199,7 @@ class App extends React.Component {
 }
 
 App.propTypes = {
+  client: PropTypes.shape({ query: PropTypes.func.isRequired }).isRequired,
   locale: PropTypes.string.isRequired,
   location: PropTypes.shape({ pathname: PropTypes.string.isRequired }),
   initialProps: PropTypes.object.isRequired, // eslint-disable-line react/forbid-prop-types
